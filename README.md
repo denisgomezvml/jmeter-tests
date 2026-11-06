@@ -1,42 +1,66 @@
-# Laboratorio de pruebas de carga con Apache JMeter
+# JMeter Load Testing Lab
 
-Dos sitios web locales con tema oscuro estilo Microsoft Teams, pensados como objetivo de pruebas de carga:
+A practice project for load testing with Apache JMeter. It runs two local web sites with a Microsoft Teams style dark theme, one light and one heavy, so you can compare how each behaves under load. Everything runs locally with Docker Compose and free tools only.
 
-| Sitio | URL | Descripción |
-|-------|-----|-------------|
-| `light` | http://localhost:8081 | Ligero: HTML pequeño y respuestas JSON mínimas |
-| `heavy` | http://localhost:8082 | Pesado: ~285 KB de HTML con 600 tarjetas, script de ~500 KB, JSON grande (1500 mensajes) y endpoints con trabajo de CPU (`pbkdf2`) |
+## Project structure
 
-Ambos exponen `/` (página), `/login` (formulario), `POST /api/login`, `/api/messages` y `/health`. Cada contenedor está limitado a 0.5 CPU y 256 MB para que la saturación sea visible.
+```
+.
+├── docker-compose.yml          Sites and the JMeter runner
+├── data/users.csv              Test credentials used by the login requests
+├── jmeter/
+│   ├── Dockerfile              JMeter image used in non-GUI mode
+│   ├── load-test.jmx           Test plan
+│   └── scenarios/              baseline, normal and stress properties
+├── scripts/run-test.sh         Runs a scenario and builds the HTML report
+├── sites/
+│   ├── light/                  Lightweight site
+│   ├── heavy/                  Heavy site
+│   └── shared/                 Shared theme, login script and server code
+└── results/                    Generated output (ignored by git)
+```
 
-Credenciales válidas: `user01` … `user50`, contraseña `Passw0rd!` (ver `data/users.csv`).
+## Target sites
 
-## Requisitos
+| Site  | URL                   | Description |
+|-------|-----------------------|-------------|
+| light | http://localhost:8081 | Small HTML page and minimal JSON responses |
+| heavy | http://localhost:8082 | About 285 KB of HTML with 600 cards, a script of about 500 KB, a large JSON payload (1500 messages) and CPU-bound endpoints (`pbkdf2`) |
 
-Solo Docker con Docker Compose. JMeter corre dentro de un contenedor (no necesitas instalarlo). Todo es gratuito y local.
+Both sites expose `/`, `/login`, `POST /api/login`, `/api/messages` and `/health`. Each container is limited to 0.5 CPU and 256 MB of memory so saturation shows up clearly.
 
-## Levantar los sitios
+Valid credentials are `user01` to `user50` with password `Passw0rd!` (see `data/users.csv`).
+
+## Requirements
+
+Docker with Docker Compose. JMeter runs inside a container, so no local installation is needed.
+
+## Start the sites
 
 ```bash
 docker compose up -d --build
 ```
 
-Para detenerlos: `docker compose down`.
-
-## Ejecutar pruebas (modo CLI + reporte HTML)
+Stop them with:
 
 ```bash
-./scripts/run-test.sh baseline   # 10 usuarios
-./scripts/run-test.sh normal     # 100 usuarios
-./scripts/run-test.sh stress     # 500 usuarios
+docker compose down
 ```
 
-El script levanta los sitios si hace falta, ejecuta JMeter sin interfaz gráfica y genera:
+## Run a load test
 
-- `results/<escenario>/results.jtl`: resultados crudos
-- `results/<escenario>/report/index.html`: reporte HTML (ábrelo en el navegador)
+```bash
+./scripts/run-test.sh baseline
+./scripts/run-test.sh normal
+./scripts/run-test.sh stress
+```
 
-Comando equivalente sin el script:
+The script starts the sites if needed, runs JMeter in non-GUI mode and writes:
+
+- `results/<scenario>/results.jtl` with the raw results
+- `results/<scenario>/report/index.html` with the HTML report
+
+Equivalent command without the script:
 
 ```bash
 docker compose --profile test run --rm jmeter -n -t /work/jmeter/load-test.jmx \
@@ -44,39 +68,41 @@ docker compose --profile test run --rm jmeter -n -t /work/jmeter/load-test.jmx \
   -l /work/results/baseline/results.jtl -e -o /work/results/baseline/report
 ```
 
-### Escenarios
+### Scenarios
 
-| Escenario | Usuarios | Ramp-up | Duración |
-|-----------|----------|---------|----------|
-| baseline | 10 | 10 s | 60 s |
-| normal | 100 | 60 s | 180 s |
-| stress | 500 | 120 s | 300 s |
+| Scenario | Users | Ramp-up | Duration |
+|----------|-------|---------|----------|
+| baseline | 10    | 10 s    | 60 s     |
+| normal   | 100   | 60 s    | 180 s    |
+| stress   | 500   | 120 s   | 300 s    |
 
-Cada Thread Group (uno por sitio) usa estos valores. Puedes sobreescribir cualquier parámetro al ejecutar, por ejemplo:
+Each Thread Group (one per site) uses these values. Any property can be overridden on the command line:
 
 ```bash
 ./scripts/run-test.sh baseline -Jusers=25 -Jduration=120 -Jthink_min=200 -Jthink_range=500
 ```
 
-Parámetros disponibles: `users`, `rampup`, `duration`, `think_min`, `think_range` (timer aleatorio uniforme, ms), `light_host`, `light_port`, `heavy_host`, `heavy_port`, `users_file`.
+Available properties: `users`, `rampup`, `duration`, `think_min`, `think_range` (uniform random timer, in ms), `light_host`, `light_port`, `heavy_host`, `heavy_port` and `users_file`.
 
-En `stress` el sitio pesado probablemente mostrará errores y timeouts: es lo esperado. Para estresar más, sube `-Jusers`.
+Under the stress scenario the heavy site is expected to show errors and timeouts. Increase `-Jusers` to push further.
 
-## Contenido del plan `jmeter/load-test.jmx`
+## Test plan
 
-- Thread Group "Light Site Users": home, login (datos de `data/users.csv`) y API de mensajes.
-- Thread Group "Heavy Site Users": home, script pesado, login, API grande y API de CPU.
-- Aserciones de código HTTP (200) y de contenido esperado en cada petición.
-- Uniform Random Timer entre peticiones (tiempo de espera de usuario).
-- Listeners: Aggregate Report, Summary Report y Results Tree (solo errores); en CLI se usa el `.jtl` y el reporte HTML.
+`jmeter/load-test.jmx` contains:
 
-## Cómo interpretar el reporte
+- A "Light Site Users" Thread Group: home page, login with data from `data/users.csv`, and the messages API.
+- A "Heavy Site Users" Thread Group: home page, heavy script, login, large messages API and CPU-bound API.
+- Response assertions on the HTTP status code (200) and on expected content for every request.
+- A Uniform Random Timer between requests to simulate user think time.
+- Listeners: Aggregate Report, Summary Report and a Results Tree limited to errors. In CLI mode the `.jtl` file and HTML report are used.
 
-Abre `results/<escenario>/report/index.html` y revisa la tabla *Statistics* (una fila por petición):
+## Reading the report
 
-- **Tiempo promedio (Average)**: media de la respuesta. Útil como referencia, pero oculta valores extremos.
-- **Percentil 95 (95th pct)**: el 95 % de las peticiones respondió en este tiempo o menos. Es la mejor métrica de la experiencia real; si se aleja mucho del promedio hay picos de latencia.
-- **Throughput**: peticiones por segundo atendidas. Debe crecer con los usuarios; si se estanca o cae mientras suben los usuarios, el servidor llegó a su límite.
-- **% de errores (Error %)**: peticiones fallidas (código distinto de 200, timeout o aserción fallida). Lo ideal es 0 %; más de 1–2 % indica problemas.
+Open `results/<scenario>/report/index.html` and check the Statistics table, which has one row per request:
 
-Compara `light` contra `heavy` en cada escenario: normalmente el pesado muestra mayor promedio y p95, menor throughput y errores antes que el ligero. En *Over Time* → *Response Times Over Time* y *Active Threads Over Time* puedes ver en qué número de usuarios empieza la degradación.
+- **Average**: mean response time. A useful baseline, but it hides extreme values.
+- **95th percentile**: 95 percent of requests responded in this time or less. It is a better indicator of real user experience; a large gap from the average points to latency spikes.
+- **Throughput**: requests served per second. It should grow with the number of users. If it flattens or drops while users keep increasing, the server has reached its limit.
+- **Error %**: share of failed requests (non-200 status, timeout or failed assertion). Ideally 0 percent; more than 1 to 2 percent indicates a problem.
+
+Compare the light and heavy sites in each scenario. The heavy site typically shows a higher average and 95th percentile, lower throughput and errors earlier than the light one. The Response Times Over Time and Active Threads Over Time charts show at what user count degradation begins.
