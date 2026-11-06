@@ -1,2 +1,11 @@
 results/
+*.jtl
+jmeter.log
+node_modules/
+npm-debug.log*
+.env
+.env.*
 .DS_Store
+.idea/
+.vscode/
+*.swp
