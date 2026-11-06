@@ -1,0 +1,40 @@
+services:
+  light:
+    build:
+      context: ./sites
+      dockerfile: light/Dockerfile
+    ports:
+      - "8081:3000"
+    cpus: 0.5
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  heavy:
+    build:
+      context: ./sites
+      dockerfile: heavy/Dockerfile
+    ports:
+      - "8082:3000"
+    cpus: 0.5
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  jmeter:
+    profiles: ["test"]
+    build:
+      context: ./jmeter
+    depends_on:
+      light:
+        condition: service_healthy
+      heavy:
+        condition: service_healthy
+    volumes:
+      - ./:/work
