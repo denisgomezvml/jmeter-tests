@@ -4,7 +4,7 @@ const crypto = require("crypto");
 const { createApp, loadThemeAsset, loginPage, sendJson, mimeTypes } = require("./shared/server-lib");
 
 const port = Number(process.env.PORT || 3000);
-const title = "Teams Lite";
+const title = "VML-QA Lite Site";
 const loginScript = fs.readFileSync(path.join(__dirname, "shared", "login.js"), "utf8");
 
 const messages = Array.from({ length: 10 }, (_, index) => ({
@@ -28,10 +28,8 @@ function homePage() {
 <link rel="stylesheet" href="/static/theme.css">
 </head>
 <body>
-<div class="topbar"><span class="brand">${title}</span><span class="search">Search</span></div>
+<div class="topbar"><span class="brand">${title}</span></div>
 <div class="layout">
-<div class="rail"><span class="active">Chat</span><span>Teams</span><span>Calendar</span></div>
-<div class="channels"><h3>Chat</h3><ul><li class="active">General</li><li>Random</li></ul></div>
 <div class="content">${cards}</div>
 </div>
 </body>
