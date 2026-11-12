@@ -1,6 +1,6 @@
 # JMeter Load Testing Lab
 
-A practice project for load testing with Apache JMeter. It runs two local web sites with a Microsoft Teams style dark theme, one light and one heavy, so you can compare how each behaves under load. Everything runs locally with Docker Compose and free tools only.
+A practice project for load testing with Apache JMeter. It runs two local web sites, one light and one heavy, so you can compare how each behaves under load. Everything runs locally with Docker Compose and free tools only.
 
 ## Project structure
 
