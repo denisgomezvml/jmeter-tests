@@ -4,7 +4,7 @@ const crypto = require("crypto");
 const { createApp, loadThemeAsset, loginPage, sendJson, mimeTypes } = require("./shared/server-lib");
 
 const port = Number(process.env.PORT || 3000);
-const title = "Teams Heavy";
+const title = "VML-QA Heavy Site";
 const cardCount = Number(process.env.CARD_COUNT || 600);
 const loginScript = fs.readFileSync(path.join(__dirname, "shared", "login.js"), "utf8");
 
@@ -40,10 +40,8 @@ function homePage() {
 <script src="/static/vendor.js" defer></script>
 </head>
 <body>
-<div class="topbar"><span class="brand">${title}</span><span class="search">Search</span></div>
+<div class="topbar"><span class="brand">${title}</span></div>
 <div class="layout">
-<div class="rail"><span class="active">Chat</span><span>Teams</span><span>Calendar</span></div>
-<div class="channels"><h3>Chat</h3><ul><li class="active">General</li><li>Random</li></ul></div>
 <div class="content">${renderCards(cardCount)}</div>
 </div>
 </body>
